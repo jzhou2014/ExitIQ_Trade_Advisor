@@ -6,11 +6,11 @@ AI-powered investment exit advisor that tells retail investors whether to **Hold
 
 ## Stack
 
-| Layer    | Technology          |
-|----------|---------------------|
-| Frontend | Streamlit           |
-| Backend  | FastAPI + Uvicorn   |
-| Language | Python 3.11+        |
+| Layer    | Technology                                      |
+|----------|-------------------------------------------------|
+| Frontend | Streamlit (pure UI — no business logic)         |
+| Backend  | FastAPI + Uvicorn                               |
+| Language | Python 3.11+                                    |
 
 ---
 
@@ -18,12 +18,14 @@ AI-powered investment exit advisor that tells retail investors whether to **Hold
 
 ```
 ├── backend/
-│   ├── main.py          # FastAPI app & routes
-│   ├── models.py        # Pydantic request/response models
-│   ├── advisor.py       # Core scoring & recommendation logic
+│   ├── main.py              # FastAPI app & all routes
+│   ├── models.py            # Pydantic request/response models
+│   ├── advisor.py           # Manual-input scoring & recommendation logic
+│   ├── analysis.py          # Decision Engine: live price fetch, RSI/MACD/SMA, exit scoring
+│   ├── macro_sentiment.py   # Macro signals (FRED, VIX) & news sentiment (VADER)
 │   └── requirements.txt
 ├── frontend/
-│   ├── app.py           # Streamlit UI
+│   ├── app.py               # Streamlit UI — calls backend APIs only
 │   └── requirements.txt
 ├── .env.example
 └── README.md
@@ -81,56 +83,57 @@ Scores are aggregated, adjusted for **risk tolerance**, and mapped to one of thr
 
 ---
 
-## API
+## API Endpoints
 
-### `POST /advise`
+Interactive docs available at **http://localhost:8000/docs** once the backend is running.
 
-**Request body:**
+### `POST /analyze` — Decision Engine
+Fetches live price history and returns a full exit analysis.
+
 ```json
-{
-  "portfolio": {
-    "ticker": "AAPL",
-    "shares": 10,
-    "avg_cost": 150.0,
-    "current_price": 175.0,
-    "sector": "Technology"
-  },
-  "market_signals": {
-    "rsi": 65,
-    "pe_ratio": 28,
-    "moving_avg_50": 170,
-    "moving_avg_200": 160,
-    "analyst_rating": "Buy"
-  },
-  "macro_conditions": {
-    "interest_rate_trend": "Stable",
-    "inflation_rate": 3.2,
-    "market_sentiment": "Bullish",
-    "recession_risk": "Low"
-  },
-  "sentiment": {
-    "news_sentiment": "Positive",
-    "social_sentiment": "Neutral",
-    "insider_activity": "Buying"
-  },
-  "risk_tolerance": "Medium"
-}
-```
-
-**Response:**
-```json
+// Request
 {
   "ticker": "AAPL",
-  "recommendation": "HOLD",
-  "confidence": 0.82,
-  "unrealized_pnl": 250.0,
-  "unrealized_pnl_pct": 16.67,
-  "reasoning": "The overall signal for AAPL is positive...",
-  "key_factors": [
-    "Solid gain of 16.7% — trimming may lock in profits",
-    "RSI 65 — neutral momentum",
-    "Golden cross: 50-day MA above 200-day MA (bullish)",
-    ...
-  ]
+  "buy_price": 150.0,
+  "buy_date": "2024-01-01",
+  "shares": 10,
+  "risk_tolerance": "Medium",
+  "account_type": "Taxable"
+}
+
+// Response
+{
+  "ticker": "AAPL",
+  "action": "Hold",
+  "confidence": 72,
+  "color": "#17b26a",
+  "sell_pressure_score": 15,
+  "signals": ["Position up 16.7%", "RSI 55 — neutral momentum", ...],
+  "metrics": { "current_price": 175.0, "rsi": 55.0, "sma50": 170.0, ... },
+  "price_history": [{ "date": "2024-01-02", "price": 185.2 }, ...]
 }
 ```
+
+### `GET /macro` — Macro Signals
+Returns live Fed Funds Rate, yield curve, and VIX signals from FRED and Yahoo Finance.
+
+```json
+{
+  "macro_score": 55,
+  "signals": ["Fed Funds Rate 4.33% — moderately restrictive", "VIX 18.2 — calm market conditions", ...]
+}
+```
+
+### `GET /sentiment/{ticker}` — News Sentiment
+Scores the latest Yahoo Finance headlines using VADER sentiment analysis.
+
+```json
+{
+  "sentiment_score": 0.142,
+  "sentiment_label": "Positive",
+  "headlines": [{ "title": "Apple beats earnings...", "score": 0.62 }, ...]
+}
+```
+
+### `POST /advise` — Manual Advisor (legacy)
+Accepts manually entered market signals and returns a HOLD / TRIM / SELL recommendation.

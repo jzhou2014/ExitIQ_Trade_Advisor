@@ -54,3 +54,65 @@ class AdvisorResponse(BaseModel):
     unrealized_pnl_pct: float
     reasoning: str
     key_factors: list[str]
+
+
+# ─── Exit Analysis models ──────────────────────────────────────────────────────
+
+class ExitAnalysisRequest(BaseModel):
+    ticker: str
+    buy_price: float = Field(..., gt=0)
+    buy_date: str = Field(..., description="ISO date string YYYY-MM-DD")
+    shares: float = Field(..., gt=0)
+    risk_tolerance: str = Field("Medium", description="Low / Medium / High")
+    account_type: str = Field("Taxable", description="Taxable / Retirement")
+
+
+class PricePoint(BaseModel):
+    date: str
+    price: float
+
+
+class ExitMetrics(BaseModel):
+    current_price: float
+    buy_price: float
+    gain_pct: float
+    position_value: float
+    unrealized_pnl: float
+    hold_days: int
+    rsi: float
+    macd: float
+    macd_signal: float
+    macd_histogram: float
+    momentum_20d: float
+    sma50: float
+    sma200: float
+    short_term_tax: bool
+
+
+class ExitAnalysisResponse(BaseModel):
+    ticker: str
+    action: str
+    confidence: int
+    color: str
+    sell_pressure_score: int
+    signals: list[str]
+    metrics: ExitMetrics
+    price_history: list[PricePoint]
+
+
+# ─── Macro & Sentiment models ──────────────────────────────────────────────────
+
+class MacroResponse(BaseModel):
+    macro_score: int
+    signals: list[str]
+
+
+class HeadlineItem(BaseModel):
+    title: str
+    score: float
+
+
+class SentimentResponse(BaseModel):
+    sentiment_score: float
+    sentiment_label: str
+    headlines: list[HeadlineItem]
